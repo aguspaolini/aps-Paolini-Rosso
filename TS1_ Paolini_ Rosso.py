@@ -51,24 +51,34 @@ grafico(tt, sen_2, 'S1 amplificada y desfasada π/2')
 
 # Señal 3: modulada en amplitud
 ff_mod = 1000  # Hz
+m = 0.7        # índice de modulación (0 < m <= 1)
 s_moduladora = np.sin(2*np.pi*ff_mod*tt)
-sen_3 = sen_1 * s_moduladora
+sen_3 = (1 + m*s_moduladora) * sen_1
+env_sup = (1 + m*s_moduladora)
+env_inf = -(1 + m*s_moduladora)
+
 plt.figure(figsize=(8,4))
-plt.plot(tt, sen_3, 'g', label='S1 modulada en amplitud')
-plt.plot(tt, s_moduladora, 'b--', label='Señal moduladora')
+E = np.sum(np.abs(sen_3)**2) * ts  # Energía de la señal 3
+N = len(sen_3)                     # Cantidad de muestras
+Ts = tt[1]-tt[0] 
+  
+line_hdls1 = plt.plot(tt, sen_3, 'g', label='S1 modulada en amplitud')
+plt.plot(tt, env_sup, 'r--', label='Envolvente superior')
+plt.plot(tt, env_inf, 'y--', label='Envolvente inferior')
 plt.legend()
 plt.title('Modulación')
 plt.xlabel('Tiempo [s]')
 plt.ylabel('Amplitud [V]')
 plt.grid(True)
+info_text = f"Ts = {Ts*1e6:.2f} µs, N = {N}, Energía = {E:.4f}"
+plt.legend(line_hdls1, [info_text], loc='upper right')
 plt.tight_layout()
 plt.show()
 
 
 # Señal 4: al 75% de la energía de Señal 3
-e_sen_3 = np.sum(np.abs(sen_3)**2) * ts  # Energía de la señal 3
-e_objetivo = 0.75 * e_sen_3              # Energía buscada de la señal 4
-sen_4 = np.sqrt(e_objetivo/e_sen_3) * sen_3
+e_objetivo = 0.75 * E              # Energía buscada de la señal 4
+sen_4 = np.sqrt(e_objetivo/E) * sen_3
 grafico(tt, sen_4, 'S1 modulada y recortada al 75% de energía')
 
 
