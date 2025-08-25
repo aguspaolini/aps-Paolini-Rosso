@@ -7,7 +7,6 @@ Created on Fri Aug  14 17:05:23 2025
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal
-import time
 from scipy.io import wavfile
 
 #%%                                  Punto 1
@@ -61,31 +60,70 @@ plt.figure(figsize=(8,4))
 E = np.sum(np.abs(sen_3)**2) * ts  # Energía de la señal 3
 N = len(sen_3)                     # Cantidad de muestras
 Ts = tt[1]-tt[0] 
-  
-line_hdls1 = plt.plot(tt, sen_3, 'g', label='S1 modulada en amplitud')
-plt.plot(tt, env_sup, 'r--', label='Envolvente superior')
-plt.plot(tt, env_inf, 'y--', label='Envolvente inferior')
-plt.legend()
+
+# Graficar
+line1, = plt.plot(tt, sen_3, 'g', label='S1 modulada en amplitud')
+line2, = plt.plot(tt, env_sup, 'r--', label='Envolvente superior')
+line3, = plt.plot(tt, env_inf, 'y--', label='Envolvente inferior')
+
+# Info extra
+info_text = f"ts = {Ts*1e6:.2f} µs, N = {N}, Energía = {E:.4f}"
+
+# Primera leyenda (las señales)
+legend1 = plt.legend([line1, line2, line3],
+                     [line1.get_label(), line2.get_label(), line3.get_label()],
+                     loc='upper right')
+plt.gca().add_artist(legend1)  # fijar esta leyenda
+
+# Segunda leyenda (info aparte)
+plt.legend([line1], [info_text], loc='lower right')
+
 plt.title('Modulación')
 plt.xlabel('Tiempo [s]')
 plt.ylabel('Amplitud [V]')
 plt.grid(True)
-info_text = f"Ts = {Ts*1e6:.2f} µs, N = {N}, Energía = {E:.4f}"
-plt.legend(line_hdls1, [info_text], loc='upper right')
 plt.tight_layout()
 plt.show()
 
 
-# Señal 4: al 75% de la energía de Señal 3
-e_objetivo = 0.75 * E              # Energía buscada de la señal 4
-sen_4 = np.sqrt(e_objetivo/E) * sen_3
-grafico(tt, sen_4, 'S1 modulada y recortada al 75% de energía')
+
+def recorte_energia(signal, ts, porcentaje=0.75):
+    
+    # Energía original
+    E_orig = np.sum(np.abs(signal)**2) * ts
+    E_obj = porcentaje * E_orig
+
+    # Máxima amplitud de la señal
+    max_amp = np.max(np.abs(signal))
+    umbral = max_amp
+
+    # Búsqueda iterativa del umbral
+    for i in np.linspace(max_amp, 0, 2000):
+        rec = np.clip(signal, -i, i)
+        E_rec = np.sum(np.abs(rec)**2) * ts
+        if E_rec <= E_obj:
+            umbral = i
+            break
+
+    signal_rec = np.clip(signal, -umbral, umbral)
+    return signal_rec, umbral
+
+
+def recorte_por_amplitud(x, factor=0.75):
+    A = np.max(np.abs(x))
+    u = factor * A
+    return np.clip(x, -u, u), u
+
+sen_4, umbral = recorte_energia(sen_3,ts,0.75)
+sen_4_modif, umbral_modif = recorte_por_amplitud(sen_3,0.75)
+grafico(tt, sen_4, 'Señal recortada en amplitud al 75% de la energía')
+grafico(tt, sen_4_modif, 'Señal recortada al 75% de su amplitud')
 
 
 # Señal 5: cuadrada 4 kHz
 ff_2 = 4000  # Hz
 sen_5 = signal.square(2*np.pi*ff_2*tt)
-grafico(tt, sen_5, 'Señal cuadrada 4 kHz')
+grafico(tt, sen_5, 'Señal cuadrada 4 Khz')
 
 
 # Señal 6: pulso rectangular 10 ms
@@ -103,25 +141,25 @@ grafico(tt_pulso, sen_6, 'Pulso rectangular 10 ms')
 #%%                           Verifico ortogonalidad
 
 
-def prod_interno(s1, s2, ts, n1, n2,  tol=1e-10):
-  
-    # Producto interno discreto
-    p_int = np.sum(s1 * s2) * ts
+def prod_interno(s1, s2, ts, n1, n2, tol=1e-10):
     
+    # Producto interno con np.dot
+    p_int = np.dot(s1, s2) * ts
+
     if np.abs(p_int) < tol:
         print(f'Las señales {n1} y {n2} son ortogonales.')
     else:
         print(f'Las señales {n1} y {n2} NO son ortogonales.')
 
+
 # Verificar ortogonalidad
-prod_interno(sen_1, sen_2, ts, 'S1', 'S2')
-prod_interno(sen_1, sen_3, ts, 'S1', 'S3')
-prod_interno(sen_1, sen_4, ts, 'S1', 'S4')
-prod_interno(sen_1, sen_5, ts, 'S1', 'S5')
-prod_interno(sen_1, sen_6[:len(sen_1)], ts, 'S1', 'Pulso')
+prod_interno(sen_1, sen_2, ts, 'S1', 'S2', 1e-10)
+prod_interno(sen_1, sen_3, ts, 'S1', 'S3', 1e-10)
+prod_interno(sen_1, sen_4, ts, 'S1', 'S4', 1e-10)
+prod_interno(sen_1, sen_5, ts, 'S1', 'S5', 1e-10)
+prod_interno(sen_1, sen_6[:len(sen_1)], ts, 'S1', 'Pulso', 1e-10)
 
 #%%                       Punto 3
-
 def correlacion(x, y, titulo):
     corr = np.correlate(x, y, mode='full') * ts
     lags = np.arange(-len(x)+1, len(x)) * ts
@@ -129,7 +167,7 @@ def correlacion(x, y, titulo):
     plt.figure(figsize=(8,4))
     plt.plot(lags, corr, 'b')
     plt.title(titulo)
-    plt.xlabel('Retraso [s]')
+    plt.xlabel('Demora [s]')
     plt.ylabel('Correlación')
     plt.grid(True)
     plt.tight_layout()
@@ -142,6 +180,7 @@ correlacion(sen_1, sen_1, 'Autocorrelación de S1')
 correlacion(sen_1, sen_2, 'Correlación S1-S2')
 correlacion(sen_1, sen_3, 'Correlación S1-S3')
 correlacion(sen_1, sen_4, 'Correlación S1-S4')
+correlacion(sen_1, sen_4_modif, 'Correlación S1-S4 modif')
 correlacion(sen_1, sen_5, 'Correlación S1-S5')
 correlacion(sen_1, sen_6[:len(sen_1)], 'Correlación S1-Pulso')
 
@@ -168,45 +207,8 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-#%%                         Bonus 4
 
-# Parámetros
-tiempo_total = 20    # duración en segundos
-dt = 0.5             # distancia entre muestras (segundos)
-
-tiempos = []
-temps = []
-
-plt.ion()
-fig, ax = plt.subplots(figsize=(8,4))
-t0 = time.time()
-
-for _ in range(int(tiempo_total/dt)):
-    ahora = time.time() - t0   # tiempo relativo desde inicio
-    
-    # SIMULACIÓN: temperatura alrededor de 50°C con fluctuaciones
-    temp = 50 + 2*np.sin(0.2*ahora) + np.random.normal(0,0.3)
-    
-    tiempos.append(ahora)
-    temps.append(temp)
-    
-    # Graficar en vivo
-    ax.clear()
-    ax.plot(tiempos, temps, '-o', label="Temperatura CPU (simulada)")
-    ax.set_title("Temperatura CPU en tiempo real")
-    ax.set_xlabel("Tiempo [s]")
-    ax.set_ylabel("Temperatura [°C]")
-    ax.grid(True)
-    ax.legend()
-    plt.pause(0.01)
-    
-    time.sleep(dt)
-
-plt.ioff()
-plt.show()
-
-
-#%% ==================== Bonus 5: Procesar un WAV ====================
+#%% ==================== Bonus 4: Procesar un WAV ====================
 
 # Leer archivo wav
 fs, data = wavfile.read("ambiente.wav")   # <-- poné tu archivo aquí
