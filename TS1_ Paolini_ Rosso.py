@@ -6,8 +6,9 @@ Created on Fri Aug  14 17:05:23 2025
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import signal
+from scipy.signal import square
 from scipy.io import wavfile
+from scipy.signal import correlate
 
 #%%                                  Punto 1
 
@@ -18,21 +19,27 @@ tt = np.arange(nn)*ts   # Vector de tiempo
 
 # Función para graficar y mostrar Ts, N y energía
 def grafico(x, y, titulo):
-    E = np.sum(np.abs(y)**2) * ts  # Energía de la señal
     N = len(y)                     # Cantidad de muestras
     Ts = x[1]-x[0]                 # Tiempo entre muestras
+    E = np.sum(np.abs(y)**2) * Ts  # Energía de la señal
+    P = (1/(N*Ts)) * np.sum(np.abs(y)**2) * Ts   
+   
     
     plt.figure(figsize=(8,4))
-    line_hdls = plt.plot(x, y, 'g', label='Señal')
+    line_hdls = plt.plot(x, y, 'go', label='Señal', markersize=2)
     plt.title(titulo)
     plt.xlabel('Tiempo [s]')
     plt.ylabel('Amplitud [V]')
     plt.grid(True)
     
     # Información en la leyenda
-    info_text = f"Ts = {Ts*1e6:.2f} µs, N = {N}, Energía = {E:.4f}"
-    plt.legend(line_hdls, [info_text], loc='upper right')
-    
+    if titulo == 'Pulso rectangular 10 ms':
+        info_text = f"ts = {Ts*1e6:.2f} µs, N = {N}, Energía = {E:.4f} J"
+        plt.legend(line_hdls, [info_text], loc='center right')
+    else:
+        info_text = f"ts = {Ts*1e6:.2f} µs, N = {N}, Potencia = {P:.4f} W"
+        plt.legend(line_hdls, [info_text], loc='upper right')
+        plt.xlim(0, 5e-3)
     plt.tight_layout()
     plt.show()
 
@@ -57,17 +64,17 @@ env_sup = (1 + m*s_moduladora)
 env_inf = -(1 + m*s_moduladora)
 
 plt.figure(figsize=(8,4))
-E = np.sum(np.abs(sen_3)**2) * ts  # Energía de la señal 3
+P = (1/(nn*ts)) * np.sum(np.abs(sen_3)**2) * ts  
 N = len(sen_3)                     # Cantidad de muestras
 Ts = tt[1]-tt[0] 
 
 # Graficar
-line1, = plt.plot(tt, sen_3, 'g', label='S1 modulada en amplitud')
+line1, = plt.plot(tt, sen_3, 'go', label='S1 modulada en amplitud', markersize=2)
 line2, = plt.plot(tt, env_sup, 'r--', label='Envolvente superior')
 line3, = plt.plot(tt, env_inf, 'y--', label='Envolvente inferior')
 
 # Info extra
-info_text = f"ts = {Ts*1e6:.2f} µs, N = {N}, Energía = {E:.4f}"
+info_text = f"ts = {Ts*1e6:.2f} µs, N = {N}, Potencia = {P:.4f} W"
 
 # Primera leyenda (las señales)
 legend1 = plt.legend([line1, line2, line3],
@@ -80,6 +87,7 @@ plt.legend([line1], [info_text], loc='lower right')
 
 plt.title('Modulación')
 plt.xlabel('Tiempo [s]')
+plt.xlim(0, 5e-3)
 plt.ylabel('Amplitud [V]')
 plt.grid(True)
 plt.tight_layout()
@@ -87,11 +95,11 @@ plt.show()
 
 
 
-def recorte_energia(signal, ts, porcentaje=0.75):
-    
-    # Energía original
-    E_orig = np.sum(np.abs(signal)**2) * ts
-    E_obj = porcentaje * E_orig
+def recorte_potencia(signal, porcentaje=0.75):
+      
+    # Potencia original (discreta, promedio)
+    P_orig = np.mean(np.abs(signal)**2)
+    P_obj = porcentaje * P_orig
 
     # Máxima amplitud de la señal
     max_amp = np.max(np.abs(signal))
@@ -100,8 +108,8 @@ def recorte_energia(signal, ts, porcentaje=0.75):
     # Búsqueda iterativa del umbral
     for i in np.linspace(max_amp, 0, 2000):
         rec = np.clip(signal, -i, i)
-        E_rec = np.sum(np.abs(rec)**2) * ts
-        if E_rec <= E_obj:
+        P_rec = np.mean(np.abs(rec)**2)   # potencia promedio, no energía
+        if P_rec <= P_obj:
             umbral = i
             break
 
@@ -109,20 +117,21 @@ def recorte_energia(signal, ts, porcentaje=0.75):
     return signal_rec, umbral
 
 
+
 def recorte_por_amplitud(x, factor=0.75):
     A = np.max(np.abs(x))
     u = factor * A
     return np.clip(x, -u, u), u
 
-sen_4, umbral = recorte_energia(sen_3,ts,0.75)
-sen_4_modif, umbral_modif = recorte_por_amplitud(sen_3,0.75)
-grafico(tt, sen_4, 'Señal recortada en amplitud al 75% de la energía')
+sen_4, umbral = recorte_potencia(sen_1,0.75)
+sen_4_modif, umbral_modif = recorte_por_amplitud(sen_1,0.75)
+grafico(tt, sen_4, 'Señal recortada en amplitud al 75% de la potencia')
 grafico(tt, sen_4_modif, 'Señal recortada al 75% de su amplitud')
 
 
 # Señal 5: cuadrada 4 kHz
 ff_2 = 4000  # Hz
-sen_5 = signal.square(2*np.pi*ff_2*tt)
+sen_5 = square(2*np.pi*ff_2*tt)
 grafico(tt, sen_5, 'Señal cuadrada 4 Khz')
 
 
@@ -160,29 +169,33 @@ prod_interno(sen_1, sen_5, ts, 'S1', 'S5', 1e-10)
 prod_interno(sen_1, sen_6[:len(sen_1)], ts, 'S1', 'Pulso', 1e-10)
 
 #%%                       Punto 3
-def correlacion(x, y, titulo):
-    corr = np.correlate(x, y, mode='full') * ts
-    lags = np.arange(-len(x)+1, len(x)) * ts
+def correlacion(x, y, titulo, ts):
+    corr = correlate(x, y, mode='full', method='direct') * ts
+    lags = np.arange(-len(x)+1, len(x))
+    corr = corr / np.max(np.abs(corr))   # normalizo para mejor visualización
+
     
     plt.figure(figsize=(8,4))
-    plt.plot(lags, corr, 'b')
+    plt.plot(lags, corr, 'm')
     plt.title(titulo)
-    plt.xlabel('Demora [s]')
+    plt.xlabel('Desplazamiento temporal [muestras]')
     plt.ylabel('Correlación')
     plt.grid(True)
     plt.tight_layout()
     plt.show()
 
+
+
 # Autocorrelación de S1
-correlacion(sen_1, sen_1, 'Autocorrelación de S1')
+correlacion(sen_1, sen_1, 'Autocorrelación S1 (2 kHz)', ts)
 
 # Correlación entre S1 y las demás
-correlacion(sen_1, sen_2, 'Correlación S1-S2')
-correlacion(sen_1, sen_3, 'Correlación S1-S3')
-correlacion(sen_1, sen_4, 'Correlación S1-S4')
-correlacion(sen_1, sen_4_modif, 'Correlación S1-S4 modif')
-correlacion(sen_1, sen_5, 'Correlación S1-S5')
-correlacion(sen_1, sen_6[:len(sen_1)], 'Correlación S1-Pulso')
+correlacion(sen_1, sen_2, 'Correlación S1-S2', ts)
+correlacion(sen_1, sen_3, 'Correlación S1-S3', ts)
+correlacion(sen_1, sen_4, 'Correlación S1-S4', ts)
+correlacion(sen_1, sen_4_modif, 'Correlación S1-S4 modif', ts)
+correlacion(sen_1, sen_5, 'Correlación S1-S5', ts)
+correlacion(sen_1, sen_6[:len(sen_1)], 'Correlación S1-Pulso', ts)
 
 #%%                        Punto 4
 
@@ -222,7 +235,7 @@ tt_audio = np.arange(len(data)) / fs
 
 # Graficar señal
 plt.figure(figsize=(10,4))
-plt.plot(tt_audio, data, label="Señal WAV")
+plt.plot(tt_audio, data,'bo', label="Señal WAV", markersize=2)
 plt.title("Señal de audio")
 plt.xlabel("Tiempo [s]")
 plt.ylabel("Amplitud")
