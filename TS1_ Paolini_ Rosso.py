@@ -172,8 +172,7 @@ prod_interno(sen_1, sen_6[:len(sen_1)], ts, 'S1', 'Pulso', 1e-10)
 def correlacion(x, y, titulo, ts):
     corr = correlate(x, y, mode='full', method='direct') * ts
     lags = np.arange(-len(x)+1, len(x))
-    corr = corr / np.max(np.abs(corr))   # normalizo para mejor visualización
-
+    
     
     plt.figure(figsize=(8,4))
     plt.plot(lags, corr, 'm')
@@ -196,6 +195,17 @@ correlacion(sen_1, sen_4, 'Correlación S1-S4', ts)
 correlacion(sen_1, sen_4_modif, 'Correlación S1-S4 modif', ts)
 correlacion(sen_1, sen_5, 'Correlación S1-S5', ts)
 correlacion(sen_1, sen_6[:len(sen_1)], 'Correlación S1-Pulso', ts)
+
+
+# --- Señal cuadrada a 2 kHz ---
+sen_5 = square(2*np.pi*2000*tt)  # misma frecuencia que sen_1
+grafico(tt, sen_5, 'Señal cuadrada 2 kHz')
+correlacion(sen_1, sen_5, 'Correlación: S1 vs Cuadrada 2 kHz', ts)
+
+# Señal 1: senoidal de 2000 Hz (extendida a 15 ms)
+f_sine = 2000
+sen_1_largo = np.sin(2 * np.pi * f_sine * tt_pulso)
+correlacion(sen_1_largo, sen_6, 'Correlación S1-Pulso', ts)
 
 #%%                        Punto 4
 
