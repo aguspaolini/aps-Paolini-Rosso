@@ -12,7 +12,7 @@ from scipy.signal import lfilter, square
 
 fs = 100000        # frecuencia de muestreo [Hz]
 ts = 1 / fs
-nn = 500              # cantidad de muestras
+nn = 1500              # cantidad de muestras
 tt = np.arange(nn) * ts  # Vector de tiempo
 
 # ----------------------------- Sistema dado ------------------------------
@@ -40,7 +40,7 @@ def recorte_por_amplitud(x, factor=0.75):
     u = factor * A
     return np.clip(x, -u, u), u
 
-sen_4, _ = recorte_por_amplitud(sen_3, 0.75)
+sen_4, _ = recorte_por_amplitud(sen_1, 0.75)
 
 # 5) Cuadrada 4 kHz
 ff_2 = 4000
@@ -53,24 +53,30 @@ sen_6 = np.zeros_like(tt_pulso)
 n_pulso = int(10e-3*fs)
 sen_6[:n_pulso] = 1.0
 
-# Guardo todas
-signals = {
-    'senoidal_2kHz': (tt, sen_1),
-    'senoidal_amp_desfase': (tt, sen_2),
-    'senoidal_mod_AM': (tt, sen_3),
-    'senoidal_recortada': (tt, sen_4),
-    'cuadrada_4kHz': (tt, sen_5),
-    'pulso_10ms': (tt_pulso, sen_6)
-}
 
 # ----------------------------- Respuesta al impulso ----------------------
 imp = np.zeros(nn)
 imp[0] = 1.0
 h = lfilter(b, a, imp)
 
+plt.figure(figsize=(10,6))
+plt.plot(tt, h, '--', label='h')
+plt.title('Salida impulso')
+plt.legend()
+plt.xlabel('Tiempo [s]')
+plt.xlim(0,0.015)
+plt.ylabel('Amplitud [V]')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
 
-def energia_discreta(x, Ts):
-    return np.sum(np.abs(x)**2) * Ts
+print("\nSistema 1: h (primeros 20 valores):", h[:20])
+
+def energia_discreta(x, ts):
+    return np.sum(np.abs(x)**2) * ts
+
+def potencia_discreta(x):
+    return np.mean(np.abs(x)**2)
 
 
 # -------- Simulación de una señal --------
@@ -82,22 +88,16 @@ def simular_senal(x, tt, nombre, b, a, h, fs, ts, graficar=True):
     # Respuesta con convolución directa
     y_conv = np.convolve(x, h)[:len(x)]
     
-    # Energía/potencia
-    energia = energia_discreta(y, ts)
-    
     # Graficar
     if graficar:
         plt.figure(figsize=(10,6))
-        plt.subplot(2,1,1)
-        plt.plot(tt, x)
-        plt.title(f'Entrada: {nombre}')
-        plt.grid(True)
-        
-        plt.subplot(2,1,2)
         plt.plot(tt, y, label='Salida (lfilter)')
         plt.plot(tt, y_conv, '--', label='Salida (conv h)')
         plt.title(f'Salida para {nombre}')
         plt.legend()
+        plt.xlabel('Tiempo [s]')
+        plt.xlim(0,0.012)
+        plt.ylabel('Amplitud [V]')
         plt.grid(True)
         plt.tight_layout()
         plt.show()
@@ -106,17 +106,29 @@ def simular_senal(x, tt, nombre, b, a, h, fs, ts, graficar=True):
     print('---')
     print(f'Entrada: {nombre}')
     print(f'Frecuencia de muestreo: {fs} Hz')
-    print(f'Tiempo de simulación: {len(x)/fs:.6f} s')
-    print(f'Energía de la salida: {energia:.6e}')
-  
-    return y, energia
+    print(f'Tiempo de simulación: {len(x)/fs:.4f} s')
+    
+    
+    # Energía/potencia
+    if nombre == 'Pulso 10 ms':
+        energia_lfilter = energia_discreta(y, ts)
+        energia_conv = energia_discreta(y_conv, ts)
+        print(f'Energía de la salida con lfilter: {energia_lfilter:.4f} J')
+        print(f'Energía de la salida con respuesta al impulso: {energia_conv:.4f} J')
+        
+    else:
+        potencia_lfilter = potencia_discreta(y)
+        potencia_conv = potencia_discreta(y_conv)
+        print(f'Potencia de la salida con lfilter: {potencia_lfilter:.4f} W')
+        print(f'Potencia de la salida con respuesta al impulso: {potencia_conv:.4f} W')
 
-y1, E1 = simular_senal(sen_1, tt, 'senoidal_2kHz', b, a, h, fs, ts, graficar=True)
-y2, E2 = simular_senal(sen_2, tt, 'senoidal_amp_desfase', b, a, h, fs, ts, graficar=True)
-y3, E3 = simular_senal(sen_3, tt, 'senoidal_mod_AM', b, a, h, fs, ts, graficar=True)
-y4, E4 = simular_senal(sen_4, tt, 'senoidal_recortada', b, a, h, fs, ts, graficar=True)
-y5, E5 = simular_senal(sen_5, tt, 'cuadrada_4kHz', b, a, h, fs, ts, graficar=True)
-y6, E6 = simular_senal(sen_6, tt_pulso, 'pulso_10ms', b, a, h, fs, ts, graficar=True)
+
+simular_senal(sen_1, tt, 'Sinusoidal 2 kHz', b, a, h, fs, ts, graficar=True)
+simular_senal(sen_2, tt, 'Sinusoidal amplificada y desfasada', b, a, h, fs, ts, graficar=True)
+simular_senal(sen_3, tt, 'Modulada', b, a, h, fs, ts, graficar=True)
+simular_senal(sen_4, tt, 'Sinusoidal recortada', b, a, h, fs, ts, graficar=True)
+simular_senal(sen_5, tt, 'Cuadrada 4 kHz', b, a, h, fs, ts, graficar=True)
+simular_senal(sen_6, tt_pulso, 'Pulso 10 ms', b, a, h, fs, ts, graficar=True)
 
 
 # ----------------------------- Ejercicio 2 -------------------------------
@@ -150,22 +162,33 @@ hB = lfilter(bB, aB, imp)    # respuesta al impulso usando lfilter
 # Salida sistema B
 yB = lfilter(bB, aB, x_seno)
 
-plt.figure(figsize=(10,6))
-plt.subplot(2,1,1)
-plt.plot(tt, x_seno)
+# -------- Graficar respuestas al impulso --------
+plt.figure(figsize=(10,4))
+plt.plot(hA[:50], 'o', label='h_A[n]')
+plt.plot(hB[:50], 'x', label='h_B[n]')
+plt.title("Respuestas al impulso (primeros 50 valores)")
+plt.xlabel("n")
+plt.ylabel("h[n]")
+plt.legend()
 plt.grid(True)
-plt.title('Entrada seno 2kHz (para sistemas A y B)')
+plt.tight_layout()
+plt.show()
 
-plt.subplot(2,1,2)
-plt.plot(tt, yA, label='Salida A')
-plt.plot(tt, yB, '--', label='Salida B')
+# -------- Graficar salidas --------
+plt.figure(figsize=(10,5))
+plt.plot(tt, yA, label='Salida sistema A')
+plt.plot(tt, yB, '--', label='Salida sistema B')
+plt.xlim(0, 0.012)
+plt.title("Salida de ambos sistemas ante sinusoidal de 2 kHz")
+plt.xlabel("Tiempo [s]")
+plt.ylabel("Amplitud [V]")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
 
 print("\nSistema A: hA (primeros 20 valores):", hA[:20])
-print("Sistema B: hB (primeros 20 valores):", hB[:20])
+print("Sistema B: hB (primeros 50 valores):", hB[:50])
 
 # ----------------------------- Bonus: Windkessel -------------------------
 C = 1.5e-3
