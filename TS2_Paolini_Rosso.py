@@ -60,17 +60,29 @@ imp[0] = 1.0
 h = lfilter(b, a, imp)
 
 plt.figure(figsize=(10,6))
-plt.plot(tt, h, '--', label='h')
-plt.title('Salida impulso')
-plt.legend()
-plt.xlabel('Tiempo [s]')
-plt.xlim(0,0.015)
-plt.ylabel('Amplitud [V]')
+
+# En muestras
+plt.subplot(2,1,1)
+plt.stem(np.arange(50), h[:50], basefmt='k')
+plt.title('Respuesta al impulso en muestras (primeros 50)')
+plt.xlabel('n')
+plt.ylabel('h[n]')
 plt.grid(True)
+
+# En tiempo
+plt.subplot(2,1,2)
+plt.plot(tt[:50], h[:50], 'o-')
+plt.title('Respuesta al impulso en tiempo (primeros 50 valores)')
+plt.xlabel('Tiempo [s]')
+plt.ylabel('h(t)')
+plt.grid(True)
+
 plt.tight_layout()
 plt.show()
 
 print("\nSistema 1: h (primeros 20 valores):", h[:20])
+
+
 
 def energia_discreta(x, ts):
     return np.sum(np.abs(x)**2) * ts
@@ -149,6 +161,7 @@ if demora < nn:
 yA = np.convolve(x_seno, hA)[:nn]  #y[n] = x[n] * hA[n].
 
 
+
 # Sistema B: y[n] = x[n] + 3 y[n-10]
 bB = [1]
 aB = np.zeros(demora+1)
@@ -173,6 +186,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
 
 # -------- Graficar salidas --------
 plt.figure(figsize=(10,5))

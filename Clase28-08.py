@@ -12,7 +12,7 @@ Created on Thu Aug 28 21:37:10 2025
 import numpy as np
 from numpy.fft import fft
 import matplotlib.pyplot as plt
-from scipy import signal
+
 
 def funcion_sen(ff, nn, amp = 1, dc = 0, ph = 0, fs = 2):
     
@@ -106,25 +106,4 @@ plt.grid(True)
 plt.show()
 
 
-#%% ----------------- Generar ventanas -----------------------
-
-# Ventana Hamming
-ventana = signal.windows.hamming(nn)
-plt.figure()
-plt.plot(ventana)
-plt.title("Ventana Hamming")
-plt.ylabel("Amplitud")
-plt.xlabel("Muestras")
-plt.grid(True)
-
-# Señal multiplicada por la ventana
-x_ventana = x_1 * ventana
-X_VENTANA = fft(x_ventana)
-
-plt.figure()
-plt.plot(ff_eje, X_VENTANA, 'b', label='Ventana Hamming en señal')
-plt.title("Ventana Hamming")
-plt.ylabel("Amplitud")
-plt.xlabel("Muestras")
-plt.grid(True)
 
