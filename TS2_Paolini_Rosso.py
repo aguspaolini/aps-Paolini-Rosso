@@ -12,7 +12,7 @@ from scipy.signal import lfilter, square
 
 fs = 100000        # frecuencia de muestreo [Hz]
 ts = 1 / fs
-nn = 1500              # cantidad de muestras
+nn = 1200             # cantidad de muestras
 tt = np.arange(nn) * ts  # Vector de tiempo
 
 # ----------------------------- Sistema dado ------------------------------
@@ -20,68 +20,28 @@ tt = np.arange(nn) * ts  # Vector de tiempo
 b = np.array([0.03, 0.05, 0.03])    #Entrada x
 a = np.array([1, -1.5, 0.5])        #Salida y (muevo hacia el otro lado)
 
+# ----------------------------- Respuesta al impulso ----------------------
+imp = np.zeros(nn)
+imp[0] = 1.0
+h_1 = lfilter(b, a, imp)
+
+plt.figure(figsize=(8,4))
+plt.plot(tt, h_1, 'x', color='peru', label='h_1[n]')
+plt.title('Salida: Respuesta al impulso')
+plt.legend(loc='center right')
+plt.xlabel('Tiempo [s]')
+plt.xlim(0,0.0003)
+plt.ylabel('Amplitud [V]')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+
+
 #--------------------- Señales TS1 ------------------------------
 # 1) Senoidal 2 kHz
 ff_1 = 2000  # Hz
 sen_1 = np.sin(2*np.pi*ff_1*tt)
-
-# 2) Amplificada y desfasada π/2
-sen_2 = 4*np.sin(2*np.pi*ff_1*tt + np.pi/2)
-
-# 3) Modulada en amplitud (con 1 kHz)
-ff_mod = 1000
-m = 0.7
-s_moduladora = np.sin(2*np.pi*ff_mod*tt)
-sen_3 = (1 + m*s_moduladora) * sen_1
-
-# 4) Señal recortada en amplitud al 75%
-def recorte_por_amplitud(x, factor=0.75):
-    A = np.max(np.abs(x))
-    u = factor * A
-    return np.clip(x, -u, u), u
-
-sen_4, _ = recorte_por_amplitud(sen_1, 0.75)
-
-# 5) Cuadrada 4 kHz
-ff_2 = 4000
-sen_5 = square(2*np.pi*ff_2*tt)
-
-# 6) Pulso rectangular 10 ms dentro de ventana de 15 ms
-nn_pulso = int(15e-3*fs)
-tt_pulso = np.arange(nn_pulso)*ts
-sen_6 = np.zeros_like(tt_pulso)
-n_pulso = int(10e-3*fs)
-sen_6[:n_pulso] = 1.0
-
-
-# ----------------------------- Respuesta al impulso ----------------------
-imp = np.zeros(nn)
-imp[0] = 1.0
-h = lfilter(b, a, imp)
-
-plt.figure(figsize=(10,6))
-
-# En muestras
-plt.subplot(2,1,1)
-plt.stem(np.arange(50), h[:50], basefmt='k')
-plt.title('Respuesta al impulso en muestras (primeros 50)')
-plt.xlabel('n')
-plt.ylabel('h[n]')
-plt.grid(True)
-
-# En tiempo
-plt.subplot(2,1,2)
-plt.plot(tt[:50], h[:50], 'o-')
-plt.title('Respuesta al impulso en tiempo (primeros 50 valores)')
-plt.xlabel('Tiempo [s]')
-plt.ylabel('h(t)')
-plt.grid(True)
-
-plt.tight_layout()
-plt.show()
-
-print("\nSistema 1: h (primeros 20 valores):", h[:20])
-
 
 
 def energia_discreta(x, ts):
@@ -95,18 +55,17 @@ def potencia_discreta(x):
 def simular_senal(x, tt, nombre, b, a, h, fs, ts, graficar=True):
     
     # Respuesta usando lfilter
-    y = lfilter(b, a, x)
+    y = lfilter(b, a, x)                    #Método por ecuación en diferencias
     
     # Respuesta con convolución directa
-    y_conv = np.convolve(x, h)[:len(x)]
+    y_conv = np.convolve(x, h)[:len(x)]     #Método con respuesta al impulso
     
-    # Graficar
     if graficar:
-        plt.figure(figsize=(10,6))
-        plt.plot(tt, y, label='Salida (lfilter)')
-        plt.plot(tt, y_conv, '--', label='Salida (conv h)')
+        plt.figure(figsize=(8,4))
+        plt.plot(tt, y, 'o', color='aqua', label='Salida (lfilter)', markersize=3)
+        plt.plot(tt, y_conv, 'x', color='deeppink', label='Salida (conv h_1)', markersize=1.5)
         plt.title(f'Salida para {nombre}')
-        plt.legend()
+        plt.legend(loc='center right')
         plt.xlabel('Tiempo [s]')
         plt.xlim(0,0.012)
         plt.ylabel('Amplitud [V]')
@@ -114,8 +73,7 @@ def simular_senal(x, tt, nombre, b, a, h, fs, ts, graficar=True):
         plt.tight_layout()
         plt.show()
     
-    # Mostrar resultados
-    print('---')
+    print('\n')
     print(f'Entrada: {nombre}')
     print(f'Frecuencia de muestreo: {fs} Hz')
     print(f'Tiempo de simulación: {len(x)/fs:.4f} s')
@@ -135,23 +93,55 @@ def simular_senal(x, tt, nombre, b, a, h, fs, ts, graficar=True):
         print(f'Potencia de la salida con respuesta al impulso: {potencia_conv:.4f} W')
 
 
-simular_senal(sen_1, tt, 'Sinusoidal 2 kHz', b, a, h, fs, ts, graficar=True)
-simular_senal(sen_2, tt, 'Sinusoidal amplificada y desfasada', b, a, h, fs, ts, graficar=True)
-simular_senal(sen_3, tt, 'Modulada', b, a, h, fs, ts, graficar=True)
-simular_senal(sen_4, tt, 'Sinusoidal recortada', b, a, h, fs, ts, graficar=True)
-simular_senal(sen_5, tt, 'Cuadrada 4 kHz', b, a, h, fs, ts, graficar=True)
-simular_senal(sen_6, tt_pulso, 'Pulso 10 ms', b, a, h, fs, ts, graficar=True)
+simular_senal(sen_1, tt, 'Sinusoidal 2 kHz', b, a, h_1, fs, ts, graficar=True)
+
+# 2) Amplificada y desfasada π/2
+sen_2 = 4*np.sin(2*np.pi*ff_1*tt + np.pi/2)
+
+simular_senal(sen_2, tt, 'Sinusoidal amplificada y desfasada', b, a, h_1, fs, ts, graficar=True)
+
+# 3) Modulada en amplitud
+ff_mod = 1000
+m = 0.7
+s_moduladora = np.sin(2*np.pi*ff_mod*tt)
+sen_3 = (1 + m*s_moduladora) * sen_1
+
+simular_senal(sen_3, tt, 'Modulada', b, a, h_1, fs, ts, graficar=True)
+
+# 4) Señal recortada en amplitud al 75%
+def recorte_por_amplitud(x, factor=0.75):
+    A = np.max(np.abs(x))
+    u = factor * A
+    return np.clip(x, -u, u), u
+
+sen_4, _ = recorte_por_amplitud(sen_1, 0.75)
+
+simular_senal(sen_4, tt, 'Sinusoidal recortada', b, a, h_1, fs, ts, graficar=True)
+
+# 5) Cuadrada 4 kHz
+ff_2 = 4000
+sen_5 = square(2*np.pi*ff_2*tt)
+
+simular_senal(sen_5, tt, 'Cuadrada 4 kHz', b, a, h_1, fs, ts, graficar=True)
+
+# 6) Pulso rectangular 10 ms dentro de ventana de 12 ms
+nn_pulso = int(12e-3*fs)
+tt_pulso = np.arange(nn_pulso)*ts
+sen_6 = np.zeros_like(tt_pulso)
+n_pulso = int(10e-3*fs)
+sen_6[:n_pulso] = 1.0
+
+simular_senal(sen_6, tt_pulso, 'Pulso 10 ms', b, a, h_1, fs, ts, graficar=True)
 
 
 # ----------------------------- Ejercicio 2 -------------------------------
 
-# Entrada senoidal de prueba
+# Entrada sinusoidal de prueba
 f_seno = 2000
 x_seno = np.sin(2*np.pi*f_seno*tt)
 
-
-demora = 10
 # Sistema A: y[n] = x[n] + 3 x[n-10]
+demora = 10
 hA = np.zeros(nn)  #respuesta al impulso sistema A
 hA[0] = 1
 if demora < nn:
@@ -160,6 +150,31 @@ if demora < nn:
 # Salida sistema A
 yA = np.convolve(x_seno, hA)[:nn]  #y[n] = x[n] * hA[n].
 
+
+# -------- Graficar respuesta al impulso --------
+plt.figure(figsize=(8,4))
+plt.plot(hA[:20], 'o', label='h_A[n]')
+plt.title("Respuesta al impulso (primeros 20 valores)")
+plt.xlabel("n")
+plt.ylabel("h[n]")
+plt.xlim(0, 20)
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# -------- Graficar salida --------
+plt.figure(figsize=(8,4))
+plt.plot(tt, x_seno, 'b.', label='Entrada x[n]', markersize=2)
+plt.plot(tt, yA, 'o', color='m', label='Salida y[n]', markersize=3)
+plt.xlim(0, 0.012)
+plt.title("Comparación entrada vs salida sistema A")
+plt.xlabel("Tiempo [s]")
+plt.ylabel("Amplitud [V]")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
 
 
 # Sistema B: y[n] = x[n] + 3 y[n-10]
@@ -175,54 +190,72 @@ hB = lfilter(bB, aB, imp)    # respuesta al impulso usando lfilter
 # Salida sistema B
 yB = lfilter(bB, aB, x_seno)
 
-# -------- Graficar respuestas al impulso --------
-plt.figure(figsize=(10,4))
-plt.plot(hA[:50], 'o', label='h_A[n]')
-plt.plot(hB[:50], 'x', label='h_B[n]')
-plt.title("Respuestas al impulso (primeros 50 valores)")
+# -------- Graficar respuesta al impulso --------
+plt.figure(figsize=(8,4))
+plt.plot(hB[:50], 'o', label='h_B[n]')
+plt.title("Respuesta al impulso (primeros 50 valores)")
 plt.xlabel("n")
 plt.ylabel("h[n]")
+plt.xlim(0,50)
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
-
 
 # -------- Graficar salidas --------
-plt.figure(figsize=(10,5))
-plt.plot(tt, yA, label='Salida sistema A')
-plt.plot(tt, yB, '--', label='Salida sistema B')
-plt.xlim(0, 0.012)
-plt.title("Salida de ambos sistemas ante sinusoidal de 2 kHz")
+plt.figure(figsize=(8,4))
+plt.plot(tt, x_seno, 'b.', label='Entrada x[n]', markersize=2)
+plt.plot(tt, yB, 'mo', label='Salida y[n]', markersize=3)
+plt.title("Comparación entrada vs salida sistema B")
 plt.xlabel("Tiempo [s]")
+plt.xlim(0, 0.002)
+plt.ylim(-2, 3)
 plt.ylabel("Amplitud [V]")
-plt.legend()
 plt.grid(True)
+plt.legend()
 plt.tight_layout()
 plt.show()
 
-print("\nSistema A: hA (primeros 20 valores):", hA[:20])
-print("Sistema B: hB (primeros 50 valores):", hB[:50])
 
 # ----------------------------- Bonus: Windkessel -------------------------
-C = 1.5e-3
-R = 1.0
+# Parámetros fisiológicos típicos
+C = 1.2   # Compliance [L/mmHg]
+R = 1      # Resistencia [mmHg·s/ml]
 
-f_hr = 1.2
-Q0 = 5e-3
-Q = Q0 + 2e-3 * np.maximum(0, np.sin(2*np.pi*f_hr*tt))
+fs_b = 1000          
+ts_b = 1/fs_b          
+nn_b = 2000         
+tt_b = np.arange(nn_b) * ts_b   
 
-P = np.zeros(nn)
-for n in range(nn-1):
-    P[n+1] = P[n] + (ts/C) * ( Q[n] - (1.0/R) * P[n] )
+# Flujo de entrada Q[n] 
+f_q = 1.3
+Q = 300 * np.maximum(0, np.sin(2*np.pi*f_q*tt_b))   # [ml/s]
 
-plt.figure(figsize=(8,4))
-plt.plot(tt, Q, label='Q (flujo)')
-plt.plot(tt, P, label='P (presión)')
-plt.title('Modelo Windkessel (Euler hacia adelante)')
-plt.legend()
-plt.grid(True)
+
+P = np.zeros(nn_b)
+P[0] = 80   # condición inicial [mmHg]
+for n in range(nn_b-1):
+    dP = (1/C) * (Q[n] - (1/R)*P[n])
+    P[n+1] = P[n] + ts_b * dP
+
+# Gráficos
+fig, axs = plt.subplots(2, 1, figsize=(10,7))
+
+# Presión arterial
+axs[0].plot(tt_b, P, color="turquoise")
+axs[0].set_xlabel("Tiempo [s]")
+axs[0].set_xlim(0, 2)
+axs[0].set_ylabel("Presión [mmHg]")
+axs[0].set_title("Presión arterial P[n]")
+axs[0].grid(True)
+
+# Flujo sanguíneo
+axs[1].plot(tt_b, Q, color="m")
+axs[1].set_xlabel("Tiempo [s]")
+axs[1].set_xlim(0, 2)
+axs[1].set_ylabel("Flujo [ml/s]")
+axs[1].set_title("Flujo de entrada Q[n]")
+axs[1].grid(True)
+
 plt.tight_layout()
 plt.show()
-
-print("\nWindkessel simulado con C=",C," R=",R," fs=",fs)
