@@ -11,7 +11,7 @@ from scipy import signal
 
 # Plantilla de diseño
 fs=1000 # Hz
-WP = [1, 35] # comienzo y fin de la banda de paso
+WP = [0.8, 35] # comienzo y fin de la banda de paso
 WS = [0.1, 40] # comienzo y fin de la banda de stop (corresponde a la atenuacion minima y maxima) -- mas grande que la de paso
 
 
@@ -21,8 +21,8 @@ alpha_s = 40
 # Aproximaciones de modulo
 # f_aprox = 'butter'
 #f_aprox = 'cheby1'
-# f_aprox = 'cheby2'
-f_aprox = 'ellip'
+f_aprox = 'cheby2'
+#f_aprox = 'ellip'
 
 # Aproximacion de fase
 # f_aprox = 'bessel'

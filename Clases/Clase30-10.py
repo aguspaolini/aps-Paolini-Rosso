@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Oct 29 12:40:19 2025
+Created on Sun Nov  2 14:24:17 2025
 
 @author: Admin
 """
-#Aplicación de filtros a señales
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -155,6 +154,85 @@ plt.plot(ecg_filt_cauer[:50000], label = 'cauer')
 
 plt.legend()
 
+#%%
+#==========================
+# Diseño de filtros FIR
+#==========================
+
+
+WP = [0.8, 35] # comienzo y fin de la banda de paso
+WS = [0.1, 40] # comienzo y fin de la banda de stop (corresponde a la atenuacion minima y maxima) -- mas grande que la de paso
+
+frecuencias = np.sort(np.concatenate(((0,fs/2), WP, WS)))  #frecuencia va de cero a Nyquist
+deseado = [0,0,1,1,0,0]  #Puntos de mi respuesta, respecto a frecuencias(en 0 va 0, en 0.1 va 0, etc.)
+cant_coef = 2000 # cant de coeficientes par
+retardo = (cant_coef - 1)//2
+
+fir_win_rect = sig.firwin2(numtaps = cant_coef, freq = frecuencias, gain = deseado, window='boxcar', nfreqs = int((np.ceil(np.sqrt(cant_coef))*2)**2) - 1, fs = fs) #Esto es un filtro tipo 2
+
+w, h = sig.freqz(b = fir_win_rect, fs=fs, worN=np.logspace(-2,1.9,1000))
+
+# --- Cálculo de fase y retardo de grupo ---
+phase = np.unwrap(np.angle(h))
+# Retardo de grupo = -dφ/dω
+w_rad = w / (fs/2) *np.pi
+gd = -np.diff(phase) / np.diff(w_rad)
+
+# --- Polos y ceros ---
+# z, p, k = sig.sos2zpk(sig.tf2sos(b = fir_win_hamming, a = 1))
+
+# --- Gráficas ---
+plt.figure(figsize=(12,10))
+
+# Magnitud
+plt.subplot(3,1,1)
+plt.plot(w, 20*np.log10(abs(h)),label=f_aprox)
+plt.title('Respuesta en Magnitud')
+plt.xlabel('Frecuencia [Hz]')
+plt.ylabel('|H(jω)| [dB]')
+plt.grid(True, which='both', ls=':')
+
+# Fase
+plt.subplot(3,1,2)
+plt.plot(w, phase, label = f_aprox)
+plt.title('Fase')
+plt.xlabel('Frecuencia [Hz]')
+plt.ylabel('Fase [rad]')
+plt.grid(True, which='both', ls=':')
+
+# Retardo de grupo
+plt.subplot(3,1,3)
+plt.plot(w[:-1], gd)
+plt.title('Retardo de Grupo')
+plt.xlabel('Frecuencia [Hz]')
+plt.ylabel('τg [# muestras]')
+plt.grid(True, which='both', ls=':')
+
+# # Diagrama de polos y ceros
+
+# plt.figure(figsize=(8,10))
+# plt.plot(np.real(p), np.imag(p), 'x', markersize=10, label=f'{f_aprox} Polos')
+# axes_hdl = plt.gca()
+
+# if len(z) > 0:
+#     plt.plot(np.real(z), np.imag(z), 'o', markersize=10, fillstyle='none', label=f'{f_aprox} Ceros')
+# plt.axhline(0, color='k', lw=0.5)
+# plt.axvline(0, color='k', lw=0.5)
+# unit_circle = patches.Circle((0, 0), radius=1, fill=False, color='gray', ls='dotted', lw=2)
+# axes_hdl.add_patch(unit_circle)
+# plt.axis([-1.1, 1.1, -1.1, 1.1])
+# plt.title('Diagrama de Polos y Ceros (plano s)')
+# plt.xlabel('σ [rad/s]')
+# plt.ylabel('jω [rad/s]')
+# plt.legend()
+# plt.grid(True)
+
+# plt.tight_layout()
+# plt.show()
+
+
+ecg_filt_win = sig.lfilter(b = fir_win_rect, a = 1, x = ecg_one_lead)
+
 ###################################
 # Regiones de interés sin ruido #
 ###################################
@@ -172,7 +250,7 @@ for ii in regs_interes:
     plt.figure()
     plt.plot(zoom_region, ecg_one_lead[zoom_region], label='ECG', linewidth=2)
     plt.plot(zoom_region, ecg_filt_butter[zoom_region], label='Butterworth')
-    #plt.plot(zoom_region, ECG_f_win[zoom_region + demora], label='FIR Window')
+    plt.plot(zoom_region, ecg_filt_win[zoom_region + retardo], label='FIR Window')
    
     plt.title('ECG sin ruido desde ' + str(ii[0]) + ' to ' + str(ii[1]) )
     plt.ylabel('Adimensional')
@@ -214,4 +292,3 @@ for ii in regs_interes:
            
     plt.show()
     
-
