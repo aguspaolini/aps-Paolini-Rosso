@@ -1,11 +1,28 @@
 Informe:
-    Edición: Uso de comas, Reemplazar dominio frecuencial, por dominio de la frecuencia.
-    Conclusión: Por qué usa el mismo método para las tres señales, al menos digan en qué caso 
-    usarían Blackman-Tukey. Falta justificar mejor por qué usaron Hamming y no Hann por ejemplo. 
+**************************************
+CORREGIDO
+    Edición: 
+        * Uso de comas, Reemplazar dominio frecuencial, por dominio de la frecuencia.
+
+**************************************
+
+**************************************
+A CORREGIR
+    Conclusión: 
+        * Por qué usa el mismo método para las tres señales, al menos digan en qué caso usarían 
+          Blackman-Tukey. Falta justificar mejor por qué usaron Hamming y no Hann por ejemplo. 
+
+No demuestran ni prueban que la varianza en la estimación del espectro sea un factor más 
+importante que la resolución del mismo a la hora de estimar el ancho de banda. Yo hubiese 
+probado con los tres métodos de estimación espectral en una de las señales. No creo que haya 
+estado bien usar el mismo método, con la misma ventana ventana para las tres señales. 
+***************************************
 
 Código:
     Corriendo sin problemas.
 
+**************************************
+A CORREGIR
 Desarrollo:
     Está muy bien en líneas generales. Falta analizar un poco más (o en el mejor de los casos 
     calcular) la varianza de la estimación del ancho de banda. Por lo menos proponga una idea de 
@@ -13,9 +30,19 @@ Desarrollo:
     Para una mejor presentación, sería conveniente presentar el espectro de cada señal y 
     explicarlo por separado.
 
+No hay ningún análisis sobre el sesgo o la varianza en la estimación del ancho de banda como para
+saber qué tan bueno es el estimador de ancho de banda.
+******************************************    
+
 Sugerencias:
     Yo separaría el ploteo de la función que estima el espectro y el ancho de banda. La función 
     de ploteo directamente la importaría del archivoTS5.py para que no me moleste en la 
     presentación.
+
+*****************************************
+CORREGIDO
     Para el Bonus elegiría otra señal, por ejemplo: https://data.nist.gov/od/id/mds2-2731.
+
+Sí, ahora comprendo que agregar el factor de ruido puede sumar conocimiento.
+******************************************
     
